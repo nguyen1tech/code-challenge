@@ -1,0 +1,41 @@
+version: '3.5'
+
+services:
+  app:
+    container_name: app
+    image: code-challenge:v0.0.1
+    environment:
+      - GIN_MODE=release
+      - APP_ENVIRONMENT=${APP_ENVIRONMENT}
+      - APP_DSN=${APP_DSN}
+      - APP_JWT_SIGNING_KEY=${APP_JWT_SIGNING_KEY}
+      - APP_JWT_EXPIRATION=${APP_JWT_EXPIRATION}
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    depends_on:
+      - postgres
+    networks:
+      - backend
+
+  postgres:
+    container_name: postgres
+    image: postgres:14.1-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATA: /data/postgres
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres:/data/postgres
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres:
