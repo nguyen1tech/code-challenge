@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	respErrors "code-challenge/internal/errors"
@@ -23,27 +23,25 @@ func TestHandler_Register(t *testing.T) {
 		mockService := new(MockService)
 		logger := log.New()
 		ctx := context.Background()
+		expectedToken := "test_token"
 		handler := NewHandler(mockService, logger)
 		r := SetUpRouter()
 		r.POST("/login", handler.Login)
 
-		mockService.On("Authenticate", ctx, mock.Anything, mock.Anything).Return("test_token", nil)
-		mockCredentials := Credentials{
-			Username: "test",
-			Password: "123",
-		}
+		mockService.On("Authenticate", ctx, mock.Anything, mock.Anything).Return(expectedToken, nil)
+		form := url.Values{}
+		form.Add("username", "test")
+		form.Add("password", "123")
 
-		jsonValue, _ := json.Marshal(mockCredentials)
-		request, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(jsonValue))
+		request, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, request)
 
 		assert.Equal(t, 200, w.Code)
-		expectedResp := map[string]string{"token": "test_token"}
-		var actualResp map[string]string
-		_ = json.Unmarshal(w.Body.Bytes(), &actualResp)
-		assert.Equalf(t, expectedResp, actualResp, "expected: %v, actual: %v", expectedResp, actualResp)
+		cookie := w.Result().Cookies()[0]
+		assert.Equalf(t, expectedToken, cookie.Value, "expected token %s, got %s", expectedToken, cookie.Value)
 
 		mockService.AssertExpectations(t)
 	})
@@ -55,13 +53,12 @@ func TestHandler_Register(t *testing.T) {
 		r := SetUpRouter()
 		r.POST("/login", handler.Login)
 
-		mockCredentials := Credentials{
-			Username: "",
-			Password: "",
-		}
+		form := url.Values{}
+		form.Add("username", "")
+		form.Add("password", "")
 
-		jsonValue, _ := json.Marshal(mockCredentials)
-		request, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(jsonValue))
+		request, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, request)
@@ -80,13 +77,12 @@ func TestHandler_Register(t *testing.T) {
 		r.POST("/login", handler.Login)
 
 		mockService.On("Authenticate", ctx, mock.Anything, mock.Anything).Return("", fmt.Errorf("mock error"))
-		mockCredentials := Credentials{
-			Username: "test",
-			Password: "123",
-		}
+		form := url.Values{}
+		form.Add("username", "test")
+		form.Add("password", "123")
 
-		jsonValue, _ := json.Marshal(mockCredentials)
-		request, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(jsonValue))
+		request, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, request)
@@ -104,13 +100,12 @@ func TestHandler_Register(t *testing.T) {
 		r.POST("/login", handler.Login)
 
 		mockService.On("Authenticate", ctx, mock.Anything, mock.Anything).Return("", respErrors.BadRequest("incorrect username/password"))
-		mockCredentials := Credentials{
-			Username: "test",
-			Password: "123",
-		}
+		form := url.Values{}
+		form.Add("username", "test")
+		form.Add("password", "123")
 
-		jsonValue, _ := json.Marshal(mockCredentials)
-		request, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(jsonValue))
+		request, _ := http.NewRequest(http.MethodPost, "/login", strings.NewReader(form.Encode()))
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, request)

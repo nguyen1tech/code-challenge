@@ -11,6 +11,7 @@ import (
 
 	"code-challenge/internal/auth"
 	"code-challenge/internal/config"
+	"code-challenge/internal/form"
 	"code-challenge/internal/user"
 	"code-challenge/pkg/log"
 
@@ -22,6 +23,8 @@ import (
 
 var Version = "1.0.0"
 
+var imageDir = "./tmp"
+
 func main() {
 	// Create root logger tagged with server version
 	logger := log.New().With(nil, "version", Version)
@@ -32,6 +35,7 @@ func main() {
 	if env != "" {
 		configFile = env
 	}
+	logger.Infof("Loading config from %s", configFile)
 
 	appConfig, err := config.Load(configFile)
 	if err != nil {
@@ -53,6 +57,7 @@ func main() {
 
 	// Initialize routes
 	router := gin.Default()
+	router.LoadHTMLGlob("templates/*.html")
 
 	userRepo := user.NewRepo(db)
 	userService := user.NewService(userRepo, logger)
@@ -70,6 +75,12 @@ func main() {
 	authRouterGroup := router.Group("/api/v0/auth")
 	router.POST("/api/v0/auth")
 	auth.RegisterHandlers(authRouterGroup, authHandler)
+
+	formRepo := form.NewRepo(db)
+	formService := form.NewService(imageDir, formRepo, logger)
+	formHandler := form.NewHandler(formService, logger)
+	formRouterGroup := router.Group("")
+	form.RegisterHandlers(formRouterGroup, authMiddleware, formHandler)
 
 	// HTTP Server
 	srv := &http.Server{

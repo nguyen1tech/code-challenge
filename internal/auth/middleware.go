@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	respErrors "code-challenge/internal/errors"
 	"code-challenge/pkg/log"
@@ -14,21 +13,13 @@ import (
 
 func Middleware(jwtService jwtService, logger log.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			logger.Errorf("Authorization header is not provided")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, respErrors.Unauthorized(""))
+		authToken, err := c.Cookie("token")
+		if err != nil {
+			logger.Errorf("Token not found, err: %v", err)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, respErrors.Unauthorized("Token not found"))
 			return
 		}
 
-		strs := strings.Split(authHeader, "Bearer ")
-		if len(strs) != 2 {
-			logger.Errorf("Malformed Authorization header")
-			c.AbortWithStatusJSON(http.StatusUnauthorized, respErrors.Unauthorized(""))
-			return
-		}
-
-		authToken := strs[1]
 		token, err := jwtService.ValidateToken(authToken)
 		if err != nil {
 			logger.Errorf("Failed to validate token, err: %v", err)

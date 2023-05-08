@@ -31,7 +31,7 @@ func RegisterHandlers(routerGroup *gin.RouterGroup, h *Handler) {
 
 func (h *Handler) Login(c *gin.Context) {
 	var credentials Credentials
-	if err := c.ShouldBindJSON(&credentials); err != nil {
+	if err := c.ShouldBind(&credentials); err != nil {
 		h.logger.With(c.Request.Context()).Errorf("Invalid request: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		c.Abort()
@@ -51,7 +51,5 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, struct {
-		Token string `json:"token"`
-	}{token})
+	c.SetCookie("token", token, 3600, "/", "", false, true)
 }
